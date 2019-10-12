@@ -28,6 +28,13 @@ public class ArtificialLife : MonoBehaviour
     }
     public Properties properties = new Properties();
     private Rigidbody mRb;
+    public Rigidbody rb
+    {
+        get
+        {
+            return mRb;
+        }
+    }
 
 
     private int mEaten = 0;
@@ -61,7 +68,7 @@ public class ArtificialLife : MonoBehaviour
 
     private Food mTarget = null;
 
-    private void Start()
+    private void Awake()
     {
         mRb = GetComponent<Rigidbody>();
     }
@@ -126,11 +133,11 @@ public class ArtificialLife : MonoBehaviour
         {
             Move(mRandomDir);
 
-            var pos = this.transform.position;
+            var pos = this.mRb.position;
             Collider[] res = Physics.OverlapSphere(this.mRb.position, properties._ViewDistance, Food.GetLayerMask());
             Array.Sort(res, (Collider a, Collider b) => {
-                float dista = Vector3.Distance(this.mRb.position, a.transform.position);
-                float distb = Vector3.Distance(this.mRb.position, b.transform.position);
+                float dista = Vector3.Distance(this.mRb.position, a.attachedRigidbody.position);
+                float distb = Vector3.Distance(this.mRb.position, b.attachedRigidbody.position);
                 if (distb == dista)
                     return 0;
                 else if (distb < dista)
@@ -142,16 +149,16 @@ public class ArtificialLife : MonoBehaviour
             {
                 mState = AlState.MovingToFood;
                 mTarget = res[0].GetComponent<Food>();
-                float distance = Vector3.Distance(mTarget.transform.position, this.mRb.position);
+                float distance = Vector3.Distance(mTarget.rb.position, this.mRb.position);
                 if(VERBOSE_LOG)
-                    Debug.Log(this.mRb.position + " found food at " + mTarget.transform.position + "  " + distance);
+                    Debug.Log(this.mRb.position + " found food at " + mTarget.rb.position + "  " + distance);
             }
 
 
         }
         else if(mState == AlState.MovingToFood)
         {
-            if(mTarget != null)
+            if(mTarget != null && mTarget.IsEaten == false)
             {
                 Vector3 dir = mTarget.rb.position - mRb.position;
                 dir.y = 0;
@@ -185,8 +192,11 @@ public class ArtificialLife : MonoBehaviour
                 {
                     if(VERBOSE_LOG)
                         Debug.Log(this.gameObject.name + " ate " + f.name);
-                    //Mark as eaten. Unity won't destroy the object immediately
+
+                    //Using Destroy alone will make the results undeterministic as it
+                    //depends on the CPU time / FPS when the object will actually be deleted
                     f.Eat();
+                    f.gameObject.SetActive(false);
                     Destroy(f.gameObject);
                     mEaten++;
 

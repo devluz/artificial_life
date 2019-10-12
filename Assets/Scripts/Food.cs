@@ -35,7 +35,7 @@ public class Food : MonoBehaviour
         return LayerMask.GetMask("Food");
     }
 
-    private void Start()
+    private void Awake()
     {
         mRb = GetComponent<Rigidbody>();
     }

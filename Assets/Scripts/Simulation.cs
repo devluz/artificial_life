@@ -43,19 +43,19 @@ public class Simulation : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        UnityEngine.Random.InitState(0);
         mNextGen = new List<ArtificialLife.Properties>();
-        mNextGen.Add(new ArtificialLife.Properties(2, 2));
-        mNextGen.Add(new ArtificialLife.Properties(2, 2));
-        mNextGen.Add(new ArtificialLife.Properties(2, 2));
-        mNextGen.Add(new ArtificialLife.Properties(2, 2));
-
+        //for(int i = 0; i < 4; i++)
+        //    mNextGen.Add(new ArtificialLife.Properties(2, 2));
+        for(int i = 0; i < 4; i++)
+            mNextGen.Add(new ArtificialLife.Properties(2, 2));
         Physics.autoSimulation = false;
         MakeBarrier();
         PrepareNextRound();
         StartRound();
     }
     private float mPhysicsTimer;
-    void Update()
+    void FixedUpdate()
     {
         if (_TimeFactor < 0)
             _TimeFactor = 0;
@@ -76,12 +76,19 @@ public class Simulation : MonoBehaviour
             {
                 mPhysicsTimer -= Time.fixedDeltaTime;
                 SimulationStep();
-                Physics.SyncTransforms();
+                //Physics.SyncTransforms();
                 Physics.Simulate(Time.fixedDeltaTime);
-
+                Physics.SyncTransforms();
                 //skip if we take so long that the FPS drop below 20
                 //and skip if the round ended anyway
-                if( (DateTime.Now - start).TotalSeconds  > 0.05 || mState != SimState.InRound)
+                if ( (DateTime.Now - start).TotalSeconds  > 0.05)
+                {
+                    Debug.Log("Slow down");
+                    mPhysicsTimer = 0;
+                    break;
+                }
+
+                if (mState != SimState.InRound)
                 {
                     mPhysicsTimer = 0;
                     break;
@@ -102,7 +109,7 @@ public class Simulation : MonoBehaviour
             Food[] foods = GetComponentsInChildren<Food>();
             if(foods.Length == 0)
             {
-                Debug.Log("Ending round. Everything is eaten");
+                Debug.Log("Ending round. Everything is eaten. steps: " + mStep);
                 EndRound();
                 return;
             }
@@ -118,7 +125,7 @@ public class Simulation : MonoBehaviour
 
             if(als.Length == napping) {
 
-                Debug.Log("Ending round. Everyone is napping.");
+                Debug.Log("Ending round. Everyone is napping. steps: " + mStep);
                 EndRound();
                 return;
             }
@@ -126,7 +133,7 @@ public class Simulation : MonoBehaviour
 
             if(mStep > STEPS_PER_SEC * 60)
             {
-                Debug.Log("Ending round due to timeout.");
+                Debug.Log("Ending round due to timeout. steps: " + mStep);
                 EndRound();
                 return;
             }
@@ -222,6 +229,8 @@ public class Simulation : MonoBehaviour
         mState = SimState.InRound;
     }
 
+    //public Vector3 last;
+
     /// <summary>
     /// Ends the round and does all the mutating for the next round.
     /// 
@@ -233,6 +242,10 @@ public class Simulation : MonoBehaviour
 
 
         ArtificialLife[] als = GetComponentsInChildren<ArtificialLife>();
+
+        //for testing if the simulation runs deterministic
+        //Debug.Log(als[0].rb.position.sqrMagnitude);
+
         int eaten_sum = 0;
         foreach (var v in als)
         {

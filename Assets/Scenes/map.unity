@@ -264,7 +264,7 @@ MonoBehaviour:
     type: 3}
   _FoodPrefab: {fileID: 4766019530035009860, guid: 297bca36cc070fd429cac50055526e0b,
     type: 3}
-  _TimeFactor: 50
+  _TimeFactor: 1
   _BreakBeforeRound: 0.1
   _BreakAfterRound: 1
 --- !u!1 &1191638092
