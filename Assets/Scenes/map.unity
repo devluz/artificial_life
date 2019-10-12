@@ -256,12 +256,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d32be60ff7ffb294d9ff21a93ea8b658, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _NumberOfFood: 20
+  _NumberOfLife: 4
   _Ground: {fileID: 1749242675}
   _Barrier: {fileID: 231302921}
   _LifePrefab: {fileID: 536445319288507747, guid: 3ed95166b4c4a724487edf475963487b,
     type: 3}
   _FoodPrefab: {fileID: 4766019530035009860, guid: 297bca36cc070fd429cac50055526e0b,
     type: 3}
+  _TimeFactor: 50
+  _BreakBeforeRound: 0.1
+  _BreakAfterRound: 1
 --- !u!1 &1191638092
 GameObject:
   m_ObjectHideFlags: 0
