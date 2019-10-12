@@ -14,6 +14,22 @@ public class Food : MonoBehaviour
     }
 
 
+    private bool mIsEaten = false;
+    public bool IsEaten
+    {
+        get
+        {
+            return mIsEaten;
+        }
+    }
+
+
+    public void Eat()
+    {
+        mIsEaten = true;
+    }
+
+
     public static int GetLayerMask()
     {
         return LayerMask.GetMask("Food");

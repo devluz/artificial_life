@@ -179,12 +179,14 @@ public class ArtificialLife : MonoBehaviour
         {
             //is it food?
             Food f = collision.gameObject.GetComponent<Food>();
-            if(f != null)
+            if(f != null && f.IsEaten == false)
             {
                 if(mEaten < 2)
                 {
                     if(VERBOSE_LOG)
                         Debug.Log(this.gameObject.name + " ate " + f.name);
+                    //Mark as eaten. Unity won't destroy the object immediately
+                    f.Eat();
                     Destroy(f.gameObject);
                     mEaten++;
 

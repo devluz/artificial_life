@@ -233,9 +233,11 @@ public class Simulation : MonoBehaviour
 
 
         ArtificialLife[] als = GetComponentsInChildren<ArtificialLife>();
+        int eaten_sum = 0;
         foreach (var v in als)
         {
-            if(v.Eaten == 1)
+            eaten_sum += v.Eaten;
+            if (v.Eaten == 1)
             {
                 mNextGen.Add(v.properties);
             }else if (v.Eaten >= 2)
@@ -245,6 +247,10 @@ public class Simulation : MonoBehaviour
             }
         }
 
+        if (eaten_sum > _NumberOfFood)
+        {
+            Debug.LogWarning("More food eaten than available. Something went wrong?!?!?");
+        }
         if (mNextGen.Count == 0)
         {
             Debug.LogWarning("They all died! :(");
@@ -287,7 +293,7 @@ public class Simulation : MonoBehaviour
     {
         //pause before cleaning up possily allowing the user
         //to inspect what happened in this round
-        yield return new WaitForSecondsRealtime(_BreakBeforeRound);
+        yield return new WaitForSecondsRealtime(_BreakAfterRound);
         //removing all left overs of the last round
         Cleanup();
         //setup map for the next round
@@ -295,7 +301,7 @@ public class Simulation : MonoBehaviour
 
         //again wait a little to allow the user to see the new
         //life 
-        yield return new WaitForSecondsRealtime(_BreakAfterRound);
+        yield return new WaitForSecondsRealtime(_BreakBeforeRound);
         StartRound();
     }
 
