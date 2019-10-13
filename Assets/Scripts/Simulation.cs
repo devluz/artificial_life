@@ -28,7 +28,7 @@ public class Simulation : MonoBehaviour
     public readonly static int STEPS_PER_SEC = 50;
     private int mStep = 0;
 
-    List<ArtificialLife.Properties> mNextGen = null;
+    List<Config.Genes> mNextGen = null;
 
     private int mRound = 0;
 
@@ -44,11 +44,11 @@ public class Simulation : MonoBehaviour
     void Start()
     {
         UnityEngine.Random.InitState(0);
-        mNextGen = new List<ArtificialLife.Properties>();
+        mNextGen = new List<Config.Genes>();
         //for(int i = 0; i < 4; i++)
         //    mNextGen.Add(new ArtificialLife.Properties(2, 2));
-        for(int i = 0; i < 4; i++)
-            mNextGen.Add(new ArtificialLife.Properties(2, 2));
+        for(int i = 0; i < _NumberOfLife; i++)
+            mNextGen.Add(new Config.Genes(2, 2));
         Physics.autoSimulation = false;
         MakeBarrier();
         PrepareNextRound();
@@ -114,18 +114,18 @@ public class Simulation : MonoBehaviour
                 return;
             }
 
-            int napping = 0;
+            int nappingOrDead = 0;
             foreach(var v in als)
             {
-                if(v.State == ArtificialLife.AlState.Napping)
+                if(v.State == ArtificialLife.AlState.Napping || v.State == ArtificialLife.AlState.Dead)
                 {
-                    napping++;
+                    nappingOrDead++;
                 }
             }
 
-            if(als.Length == napping) {
+            if(als.Length == nappingOrDead) {
 
-                Debug.Log("Ending round. Everyone is napping. steps: " + mStep);
+                Debug.Log("Ending round. Everyone is napping or dead. steps: " + mStep);
                 EndRound();
                 return;
             }
@@ -238,7 +238,7 @@ public class Simulation : MonoBehaviour
     private void EndRound()
     {
         mState = SimState.InBetweenRounds;
-        mNextGen = new List<ArtificialLife.Properties>();
+        mNextGen = new List<Config.Genes>();
 
 
         ArtificialLife[] als = GetComponentsInChildren<ArtificialLife>();
@@ -250,14 +250,8 @@ public class Simulation : MonoBehaviour
         foreach (var v in als)
         {
             eaten_sum += v.Eaten;
-            if (v.Eaten == 1)
-            {
-                mNextGen.Add(v.properties);
-            }else if (v.Eaten >= 2)
-            {
-                mNextGen.Add(v.properties);
-                mNextGen.Add(Mutate(v.properties));
-            }
+            var res = Config.CreateOffspring(v.properties, v.status);
+            mNextGen.AddRange(res);
         }
 
         if (eaten_sum > _NumberOfFood)
@@ -290,15 +284,6 @@ public class Simulation : MonoBehaviour
         Physics.SyncTransforms();
     }
 
-    ArtificialLife.Properties Mutate(ArtificialLife.Properties props)
-    {
-
-        ArtificialLife.Properties res = new ArtificialLife.Properties();
-        res._MovementSpeed = props._MovementSpeed + (UnityEngine.Random.value - 0.5f) * 2.0f;
-        res._ViewDistance = props._ViewDistance + (UnityEngine.Random.value - 0.5f) * 2.0f;
-
-        return res;
-    }
 
 
 

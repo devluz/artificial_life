@@ -7,26 +7,14 @@ public class ArtificialLife : MonoBehaviour
 {
     private static bool VERBOSE_LOG = false;
 
-    [Serializable]
-    public class Properties
-    {
-        public readonly static float MOVEMENT_SPEED_MAX = 20;
-        public readonly static float VIEW_DISTANCE_MAX = 20;
-        public float _MovementSpeed = 5;
-        public float _ViewDistance = 5;
+    public Config.Genes properties = new Config.Genes();
 
-        public Properties(float speed, float view)
-        {
-            _MovementSpeed = speed;
-            _ViewDistance = view;
-        }
+    public Config.Status status = null;
 
-        public Properties()
-        {
 
-        }
-    }
-    public Properties properties = new Properties();
+
+
+
     private Rigidbody mRb;
     public Rigidbody rb
     {
@@ -37,12 +25,11 @@ public class ArtificialLife : MonoBehaviour
     }
 
 
-    private int mEaten = 0;
     public int Eaten
     {
         get
         {
-            return mEaten;
+            return status._Eaten;
         }
     }
 
@@ -50,7 +37,8 @@ public class ArtificialLife : MonoBehaviour
     {
         LookingForFood,
         MovingToFood,
-        Napping
+        Napping,
+        Dead
     }
 
     private AlState mState = AlState.LookingForFood;
@@ -71,11 +59,13 @@ public class ArtificialLife : MonoBehaviour
     private void Awake()
     {
         mRb = GetComponent<Rigidbody>();
+        status = properties.CreateStatus();
     }
 
-    public void SetProperties(Properties props)
+    public void SetProperties(Config.Genes props)
     {
         properties = props;
+        status = properties.CreateStatus();
         UpdateColor();
     }
 
@@ -83,12 +73,7 @@ public class ArtificialLife : MonoBehaviour
     {
         var renderer = this.gameObject.GetComponent<MeshRenderer>();
 
-        float speed = properties._MovementSpeed / Properties.MOVEMENT_SPEED_MAX;
-        float view = properties._ViewDistance / Properties.VIEW_DISTANCE_MAX;
-
-
-
-        renderer.material.color = new Color(speed, 0.5f, view);
+        renderer.material.color = properties.GetColor();
     }
 
     private void Update()
@@ -113,11 +98,14 @@ public class ArtificialLife : MonoBehaviour
 
     private void Move(Vector3 dir)
     {
-        Vector3 curPos = mRb.position;
+        float distance = Config.OnMove(this.status, this.properties, mRandomDir);
 
-        Vector3 movePos = curPos + dir * properties._MovementSpeed * Time.fixedDeltaTime;
-        
-        mRb.MovePosition(movePos);
+        //movement calculation and updating unity physics
+
+        Vector3 curPos = this.rb.position;
+        Vector3 movement = dir * distance;
+        Vector3 movePos = curPos + movement;
+        rb.MovePosition(movePos);
     }
 
     public void SimulationStep(int step)
@@ -131,27 +119,43 @@ public class ArtificialLife : MonoBehaviour
 
         if(mState == AlState.LookingForFood)
         {
+            //move into random direction
             Move(mRandomDir);
 
-            var pos = this.mRb.position;
+            //Check if we find any fod
             Collider[] res = Physics.OverlapSphere(this.mRb.position, properties._ViewDistance, Food.GetLayerMask());
-            Array.Sort(res, (Collider a, Collider b) => {
-                float dista = Vector3.Distance(this.mRb.position, a.attachedRigidbody.position);
-                float distb = Vector3.Distance(this.mRb.position, b.attachedRigidbody.position);
-                if (distb == dista)
-                    return 0;
-                else if (distb < dista)
-                    return 1;
-                else
-                    return -1;
-            });
             if(res != null && res.Length > 0)
             {
-                mState = AlState.MovingToFood;
-                mTarget = res[0].GetComponent<Food>();
-                float distance = Vector3.Distance(mTarget.rb.position, this.mRb.position);
-                if(VERBOSE_LOG)
-                    Debug.Log(this.mRb.position + " found food at " + mTarget.rb.position + "  " + distance);
+                //sort based on distance
+                Array.Sort(res, (Collider a, Collider b) => {
+                    float dista = Vector3.Distance(this.mRb.position, a.attachedRigidbody.position);
+                    float distb = Vector3.Distance(this.mRb.position, b.attachedRigidbody.position);
+
+                    if (distb == dista)
+                        return 0;
+                    else if (distb < dista)
+                        return 1;
+                    else
+                        return -1;
+                });
+                //target closest food we find. Unity doesn't remove food immediately that is eaten
+                //so we also have to make sure we don't target food that was already eaten
+                foreach(var c in res)
+                {
+                    Food f = c.GetComponent<Food>();
+                    if(f.IsEaten == false)
+                    {
+                        //found food!
+                        mState = AlState.MovingToFood;
+                        mTarget = res[0].GetComponent<Food>();
+                        if (VERBOSE_LOG)
+                        {
+                            float distance = Vector3.Distance(mTarget.rb.position, this.mRb.position);
+                            Debug.Log(this.mRb.position + " found food at " + mTarget.rb.position + "  " + distance);
+                        }
+                    }
+
+                }
             }
 
 
@@ -171,16 +175,40 @@ public class ArtificialLife : MonoBehaviour
             }
         }
 
-        //special case. due to some troubles in the physics they can be pushed over the edge
-        //or through it -> switch them to nap time
-        if(this.mRb.position.y < -10)
+
+
+        if (this.mState != AlState.Dead)
         {
-            this.mState = AlState.Napping;
+
+            //it fell off the platform -> dead
+            if (this.mRb.position.y < -10)
+            {
+                this.mState = AlState.Dead;
+            }
+
+            //died due to a change in status
+            if (status.IsAlive == false)
+            {
+                this.mState = AlState.Dead;
+            }
+
+            if(this.mState == AlState.Dead)
+            {
+                this.mRb.constraints = RigidbodyConstraints.None;
+                this.mRb.AddRelativeForce(new Vector3(0, 0, 1), ForceMode.Force);
+            }
         }
+        
     }
 
     private void OnCollisionEnter(Collision collision)
     {
+        if(mState != AlState.MovingToFood && mState != AlState.LookingForFood)
+        {
+            //ignore the collision if the life form doesn't actively wants to eat
+            return;
+        }
+
         //check if collusion object still exists
         if(collision != null && collision.gameObject != null) 
         {
@@ -188,7 +216,7 @@ public class ArtificialLife : MonoBehaviour
             Food f = collision.gameObject.GetComponent<Food>();
             if(f != null && f.IsEaten == false)
             {
-                if(mEaten < 2)
+                if(status._Eaten < Config.Status.MAX_FOOD)
                 {
                     if(VERBOSE_LOG)
                         Debug.Log(this.gameObject.name + " ate " + f.name);
@@ -198,9 +226,9 @@ public class ArtificialLife : MonoBehaviour
                     f.Eat();
                     f.gameObject.SetActive(false);
                     Destroy(f.gameObject);
-                    mEaten++;
+                    status._Eaten++;
 
-                    if(mEaten == 2)
+                    if(status._Eaten == Config.Status.MAX_FOOD)
                     {
                         mState = AlState.Napping;
                     }
